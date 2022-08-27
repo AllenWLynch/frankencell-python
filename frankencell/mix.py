@@ -192,7 +192,7 @@ def check_datasets(datasets, cell_state_col):
     )
 
 
-def mix_frankencells(*,
+def mix_expression(*,
     cell_info,
     datasets, 
     rd_means, 
@@ -271,7 +271,7 @@ def mix_frankencells(*,
     return all_counts, feature_info
 
 
-def add_arguments(parser):
+'''def add_arguments(parser):
 
     parser.add_argument('--scaffold', '-i', type = str, required = True)
     parser.add_argument('--datasets', '-d', type = str, nargs = "+",
@@ -285,5 +285,4 @@ def add_arguments(parser):
     parser.add_argument('--counts-layer', '-l', type = str, default = 'counts')
     parser.add_argument('--n-jobs', '-j', type = int, default = 1)
     parser.add_argument('--seed', type = int, default = None)
-    parser.add_argument('--output-path', '-o', type = str, required = True)
-
+    parser.add_argument('--output-path', '-o', type = str, required = True)'''
