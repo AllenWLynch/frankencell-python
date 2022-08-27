@@ -1,15 +1,16 @@
+from ast import expr
 import networkx as nx
-from collections.abc import Iterable
 from mira.plots.base import map_colors
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from dynclipy.dataset import add_adder, Dataset
-from .utils import write_cell_info
+from .utils import write_cell_info, add_expression_to_dynframe
 import dynclipy as dyn
 
 add_adder(Dataset, "add_prior_information")
 add_adder(Dataset, "add_cell_waypoints")
+add_adder(Dataset, "add_expression")
 
 def check_definition(G):
     
@@ -223,6 +224,9 @@ def append_cell_info(G, *cell_infos):
         appended_info[col] = \
             [val if not col == 'edge' else tuple(val) for info in cell_infos for val in info[col]]
 
+    appended_info['batch'] = \
+        [str(i) for i, info in enumerate(cell_infos) 
+        for j in range( len(info[list(info.keys())[0]]) )]
 
     assert all(
         edge in G.edges
@@ -232,9 +236,11 @@ def append_cell_info(G, *cell_infos):
     return appended_info
 
 
-def format_dynverse_dataset(
-    G, cell_info, root_node, output_path,
+def format_dynverse_dataset(*,
+    G, cell_info, expression, feature_info, root_node, output_path,
 ):
+
+    cell_info = cell_info.copy()
 
     edge = cell_info.pop('edge')
     mixing_weights = np.array(cell_info.pop('mixing_weights'))
@@ -292,8 +298,7 @@ def format_dynverse_dataset(
                 start_id = [start_cell],
                 end_id = end_cells
             ).add_root([start_cell])\
-            .add_cell_waypoints()\
-            #.add_expression(counts, counts)
+            .add_cell_waypoints()
 
     trajectory.write_output(output_path)
 
@@ -304,3 +309,8 @@ def format_dynverse_dataset(
         'edge' : edge,
         **{k : np.array(v) for k, v in cell_info.items()},
     })
+
+    add_expression_to_dynframe(
+        output_path, output_path, feature_info,
+        counts = expression, expression= expression
+    )

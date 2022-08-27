@@ -80,7 +80,7 @@ def select_features(adata, feature_type):
 
     return adata
 
-def add_expression_to_dynframe(dynframe, output_file, feature_df, expression = None, 
+def add_expression_to_dynframe(dynframe, output_file, feature_info, expression = None, 
         counts = None,
     ):
 
@@ -106,7 +106,7 @@ def add_expression_to_dynframe(dynframe, output_file, feature_df, expression = N
             expr_file = None
         
         featureinfo_file = os.path.join(folder, 'feature_info.csv')
-        feature_df.to_csv(featureinfo_file, index = None)
+        pd.DataFrame(feature_info).to_csv(featureinfo_file, index = None)
 
         rstring = '''
 dataset <- dynutils::read_h5("{dynframe}")

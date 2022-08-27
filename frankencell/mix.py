@@ -6,9 +6,6 @@ import anndata
 from functools import partial
 from joblib import Parallel, delayed
 from tqdm import tqdm
-from .utils import read_cell_info, add_expression_to_dynframe
-import pandas as pd
-import shutil
 
 from dynclipy.dataset import add_adder, Dataset
 add_adder(Dataset, "add_expression")
@@ -92,7 +89,7 @@ def get_mixable_cells(cluster_rds, read_depths, mixing_weights, rd_means, rd_std
 
         if not found_valid_cells:
             read_depths = [
-                sample_bounded_read_depth(rd_mean, rd_std, 2.5, 10, np.zeros(10).astype(bool))[0]
+                sample_bounded_read_depth(rd_mean, rd_std, 2.5, 10)[0]
                 for rd, has_valid_cells, rd_mean, rd_std in zip(
                     read_depths, mode_has_valid_cells, rd_means, rd_stds
                 )
@@ -147,7 +144,7 @@ def get_bounded_counts(exp_mean, std, max_std, lower = True):
     )
 
 
-def sample_bounded_read_depth(exp_mean, std, max_std, n_cells, is_special_cell):
+def sample_bounded_read_depth(exp_mean, std, max_std, n_cells):
 
     min_counts, max_counts = get_bounded_counts(exp_mean, std, max_std, lower=True),\
             get_bounded_counts(exp_mean, std, max_std, lower=False)
@@ -160,8 +157,8 @@ def sample_bounded_read_depth(exp_mean, std, max_std, n_cells, is_special_cell):
 
         if allowed_samples.sum() >= n_cells:
             read_depths = samples[np.random.choice(np.argwhere(allowed_samples)[:,0], size = n_cells)]
-            redirected_read_depth = int(exp_mean) + np.random.randint(-10,10, is_special_cell.sum())
-            read_depths[is_special_cell] = redirected_read_depth
+            #redirected_read_depth = int(exp_mean) + np.random.randint(-10,10, is_special_cell.sum())
+            #read_depths[is_special_cell] = redirected_read_depth
             return read_depths
         else:
             mult +=1
@@ -196,7 +193,7 @@ def check_datasets(datasets, cell_state_col):
 
 
 def mix_frankencells(*,
-    scaffold,
+    cell_info,
     datasets, 
     rd_means, 
     rd_stds, 
@@ -206,17 +203,12 @@ def mix_frankencells(*,
     cell_state_col = 'leiden',
     counts_layer = 'counts',
     n_jobs = 1,
-    seed = None,
-    output_path = None,
+    seed = 0,
 ):
 
-    if output_path is None:
-        output_path = scaffold
-
-    shutil.copyfile(scaffold, output_path)
-
-    cell_info = read_cell_info(output_path)
-    mixing_weights = cell_info.iloc[:, cell_info.columns.str.startswith('mix_weight_')].values
+    mixing_weights = np.vstack(
+        cell_info['mixing_weights']
+    )
 
     assert(np.all([
             len(arg) == len(datasets) 
@@ -229,7 +221,7 @@ def mix_frankencells(*,
     np.random.seed(seed)
 
     required_read_depths = list(zip(*[
-        sample_bounded_read_depth(mean, std, max_std, len(mixing_weights), cell_info.is_end_cell | cell_info.is_start_cell)
+        sample_bounded_read_depth(mean, std, max_std, len(mixing_weights))
         for mean, std in zip(rd_means, rd_stds)
     ]))
 
@@ -266,14 +258,17 @@ def mix_frankencells(*,
     feature_type = [
         x for feature, matrix in zip(feature_types, counts_by_mode) for x in [feature]*matrix.shape[-1]
     ]
+    
+    feature_id = [
+        str(name) for dset in datasets for name in dset.var_names
+    ]
 
-    feature_df = pd.DataFrame(
-        {'feature_id' : np.arange(all_counts.shape[-1]).astype(str),
-        'feature_type' : feature_type}
-    )
-    #print('here')
-    add_expression_to_dynframe(output_path, output_path, feature_df, 
-        counts = all_counts)
+    feature_info = {
+        'feature_id' : feature_id,
+        'feature_type' : feature_type
+    }
+
+    return all_counts, feature_info
 
 
 def add_arguments(parser):
